@@ -535,7 +535,7 @@ POST /api/session/prompt    Content-Type: application/json    Cookie: <signed>
 - **根治方案**：Continue 显式将工单落地并通过 `--prompt <active-task.md>` 投递、复用走 `--fork`；Aider 用 `--target`/`--read` 明确上下文，默认只读传 `--chat-mode ask`，施工传 `--write`。
 
 ### 坑点 50：Cursor 免费版、Qoder CLI 与 Trae 的“账号门控 vs 开源分支”差异（2026-11-16）
-- **现象与实证**：① Cursor 3.29.x（`stripeMembershipType = free`）即使开启 `Override OpenAI Base URL` 并填入自定义 Key，请求仍经 `https://api2.cursor.sh` 中转且被套餐门控拦截（`The model ... does not work with your current plan or api key`）；② `@qoder-ai/qodercli` v1.1.89 虽支持 `customModels` BYOK，但 `authType` 仅接受 `qoder-browser` / `qoder-pat`，未登录时启动阶段 `BUd()` 直接抛 `NonInteractiveAuthRequiredError: Not logged in`；③ Trae 分为三线：Trae IDE 免费账号可填自定义 OpenAI 端点但仍需登录激活面板；商业 `traecli` 仅限企业旗舰版；仅 MIT 开源的 `bytedance/trae-agent`（Python ≥ 3.12 + `uv`）支持完全免登录 BYO-Key（未在本机安装实测）。
+- **现象与实证**：① Cursor 3.29.x（`stripeMembershipType = free`）即使开启 `Override OpenAI Base URL` 并填入自定义 Key，请求仍经 `https://api2.cursor.sh` 中转且被套餐门控拦截（`The model ... does not work with your current plan or api key`）；② `@qoder-ai/qodercli` v1.1.89 虽支持 `customModels` BYOK，但 `authType` 仅接受 `qoder-browser` / `qoder-pat`，未登录时启动阶段 `BUd()` 直接抛 `NonInteractiveAuthRequiredError: Not logged in`；③ Trae 分为三线：Trae IDE 需联网登录且自定义模型经 WebSocket `/custom_model` 转发（免费版 `identity: 0` 会受限报 `503 No available accounts`）；商业 `traecli` 仅限企业旗舰版；仅 MIT 开源的 `bytedance/trae-agent`（Python ≥ 3.12 + `uv`）支持完全免登录 BYO-Key（未在本机安装实测）。
 - **根治方案**：对强制云端中转或强先验登录的软件不尝试破解；Cursor IDE 用户改在内部装开源插件（Cline / Kilo / Continue）或从终端直接调用本套件 13 路免登录桥接器；Qoder CLI 如需使用其 BYOK 须先完成账号登录；Trae 若追求完全免登录脚本化，应选开源 `bytedance/trae-agent`。
 
 

@@ -80,8 +80,8 @@
    - **合规替代方案（在 Cursor 中免会员用 GLM）**：① 在 Cursor 内安装兼容 VS Code 的开源 BYOK 扩展（如 **Cline**、**Kilo Code**、**Continue**）直连智谱；② 直接在 Cursor 终端运行本套件的 13 路免登录桥接器（`claude-code`、`codex --byok`、`pi`、`omp`、`kilo`、`crush` 等）。
 2. **Qoder CLI（`@qoder-ai/qodercli` v1.1.89 实测）、TraeCode CLI (`traecli`) 与 Factory Droid**：
    - **先登录才能用 BYOK**：实测以隔离 `--config-dir` + `--settings`（传入 `providers` 自定义智谱端点）运行 `qodercli -p`，在发出任何模型请求前即以 `NonInteractiveAuthRequiredError: Not logged in · Please run /login`（exit 1）退出。核对 `qodercli.js` 源码证实 `authType` 仅接受 `qoder-browser` / `qoder-pat`，启动器 `BUd()` 强制先验 Qoder 登录态，然后才开放 `customModels`（BYOK）。Factory Droid 同理需先登录账号（且需海外手机验证）。
-   - **Trae 三条产品线区分（⚠️ 本机未安装实测，基于官方文档与 `pyproject.toml` 源码核对）**：
-     - **Trae IDE**（`trae.cn` / `trae.ai`）：支持在「自定义配置」面板填写 OpenAI 兼容端点（`https://open.bigmodel.cn/api/coding/paas/v4`）与智谱 Key，**无需购买会员即可调用自定义模型**，但启用 AI 面板仍需先登录免费 Trae 账号（不能零账号启动）；
+   - **Trae 三条产品线区分（⚠️ 本机未安装实测，基于官方文档、源码与社区实证核对）**：
+     - **Trae IDE**（`trae.cn` / `trae.ai`）：**同样不能免登录，且自定义模型走云端中转并受账号套餐限制**——社区逆向与官方论坛已证实：① 必须联网登录 Trae 账号激活 AI 面板（断网报 997）；② 添加自定义 OpenAI 模型后，实际请求通过 WebSocket 走 Trae 官方 `/custom_model` 转发而非客户端直连；③ Free 免费账号（`identity: 0, permission: 0`）实际发消息会受限报 `503 No available accounts`（升级 Pro 或企业版后放行）。若要在 Trae IDE 内免会员用智谱 GLM，建议改在扩展中装 **Cline / Kilo Code / Continue**；
      - **商业版 `TraeCode CLI` (`traecli`)**：官方仅对 **TRAE CN 企业旗舰版**开放，强依赖 `traecli login` / `TRAECLI_PERSONAL_ACCESS_TOKEN`，个人版与无账号均不可用；
      - **开源版 `bytedance/trae-agent` (`trae-cli`)**：MIT 开源、**100% 支持免登录 BYO-Key**（`trae_config.yaml` 或 `OPENAI_API_KEY` + `OPENAI_BASE_URL` / `--model-base-url` 跑 `trae-cli run`），但要求 **Python ≥ 3.12** 与 `uv` 环境（尚未在本机搭建实测）。
 3. **桌面私有 IPC / 本地动态令牌类（Antigravity、WorkBuddy、DSH）**：
