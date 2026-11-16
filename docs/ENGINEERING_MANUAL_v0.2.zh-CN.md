@@ -45,7 +45,7 @@
 | `CODEX_BRIDGE_EXPERIENCE.md` | Codex 历史实现与实测记录（BYO-Key 免登录模式另见 `codex/README.md`） |
 | `dispatch-antigravity-template.mjs` | Antigravity 适配脚本 |
 | `dispatch-codex-template.mjs` | Codex 适配脚本（支持 ChatGPT 订阅 + BYO-Key / GLM 免登录双模式） |
-| `claude-code/`、`codex/`、`copilot/`、`kimi-code/`、`pi/`、`omp/`、`kilo/`、`crush/`、`continue-cli/`、`iflow/`、`openclaw/`、`goose/`、`aider/` | **13 路免登录（BYO-Key + 智谱 GLM）独立桥接套件**（各含 `scripts/`、`*.test.mjs`、`verify-no-secrets.mjs` 与 `README.md`） |
+| `claude-code/`、`codex/`、`copilot/`、`kimi-code/`、`pi/`、`omp/`、`kilo/`、`crush/`、`continue-cli/`、`iflow/`、`openclaw/`、`goose/`、`aider/`、`trae-agent/` | **14 路可插拔外接 API（BYO-Key）无头桥接套件**（各含 `scripts/`、`*.test.mjs`、`verify-no-secrets.mjs` 与 `README.md`） |
 | `workbuddy/` | WorkBuddy 说明、派发器、启动/恢复脚本和离线测试 |
 | `dsh/` | DSH 说明、派发器、离线测试和审计脚本 |
 | `dsh/private/` | 历史工单、fixture、状态与结果；包含本机运行信息，不是通用默认配置 |
@@ -76,7 +76,7 @@
 | **Pi / Oh My Pi (`omp`)** *(2026-11-16)* | `node cli.js` / `bun.exe cli.js --mode json -p` | `PI_CODING_AGENT_DIR` + `models.json`/`yml` (`supportsDeveloperRole: false`) | 默认只读工具集；施工 `--write` | `private/{pi,omp}-bridge/state.json` |
 | **Kilo / Crush** *(2026-11-16)* | `kilo.exe run --format json` / `crush.exe run -q` | `KILO_CONFIG_CONTENT` 内存注入 / `CRUSH_GLOBAL_CONFIG` 隔离 | 施工 `--write` (`--auto` / `-y`) | `private/{kilo,crush}-bridge/state.json` |
 | **Continue / iFlow** *(2026-11-16)* | `cn.js --config <yaml> -p` / `iflow.js -o exec-info.json -p` | `CONTINUE_GLOBAL_DIR` + `${{ secrets.* }}` / `IFLOW_API_KEY` | 默认 `--readonly`/`--plan`；施工 `--write` | `private/{continue,iflow}-bridge/state.json` |
-| **OpenClaw / Goose / Aider** *(2026-11-16)* | `openclaw agent --local` / `goose.exe run` / `aider.exe` | OpenClaw 禁插件防 `EPERM`；Goose 禁 Keyring；Aider 隔离 Python venv | Aider 默认 `--chat-mode ask`；施工 `--write` | `private/{openclaw,goose,aider}-bridge/state.json` |
+| **OpenClaw / Goose / Aider / Trae Agent** *(2026-11-16)* | `openclaw agent --local` / `goose.exe run` / `aider.exe` / `trae-launcher.py run` | OpenClaw 禁插件防 `EPERM`；Goose 禁 Keyring；Aider/Trae 隔离 Python venv（Trae 附 `cmd.exe` UTF-8 补丁） | Aider 默认 `--chat-mode ask`；Trae 默认禁 `bash`/编辑工具；施工 `--write` | `private/{openclaw,goose,aider,trae}-bridge/state.json` |
 
 ## 4. 从零开始的操作顺序
 
@@ -790,7 +790,8 @@ node "d:\本地快速部署multi-agent-orchestration桥接\zcode\scripts\dispatc
 | **47** | **Crush / Goose** | 工作区残留 `crush.json`；Goose 弹窗阻塞与文本分片 | 默认读 cwd 配置；Windows Keyring；`stream-json` 按消息分片 | Crush 用 `CRUSH_GLOBAL_CONFIG` 隔离；Goose 禁 Keyring 并按 `message.id` 拼接 |
 | **48** | **国内直连 GLM** | 残留境外代理拖垮连接；高频并行触发 429 | 国内端走代理易超时；同账号并发超限触发速率限制 | 检测到 `bigmodel.cn`/`z.ai` 自动剥离 `HTTP_PROXY`/`HTTPS_PROXY`；多路任务错峰调度 |
 | **49** | **Continue / Aider** | `cn -p` 忽略管道 stdin；Aider 非通用工具代理 | Windows stdin 未接管；Aider 基于 Git/文件 Diff 工作 | Continue 落地 `active-task.md` 传 `--prompt`；Aider 用 `--target`/`--read` + `--chat-mode ask` |
-| **50** | **Cursor / Qoder CLI** | 有自定义 Key 入口但仍报无权限或未登录 | Cursor 经 `api2.cursor.sh` 中转且免费版封锁自定义模型；`qodercli` 先验 `qoder-browser`/`qoder-pat` | Cursor 内改用 Cline/Kilo 扩展或终端 13 路免登录桥接器；Qoder CLI 须先登录才能启 BYOK |
+| **50** | **Cursor / Qoder CLI / Trae** | 有自定义 Key 入口但仍报无权限或未登录 | Cursor 经 `api2.cursor.sh` 中转且免费版封锁自定义模型；`qodercli` 先验登录；Trae IDE 经 `/custom_model` 中转且 Free 版报 503 | Cursor/Trae IDE 内改用 Cline/Kilo 扩展；Trae 无头走开源 `bytedance/trae-agent` |
+| **51** | **Trae Agent (开源)** | 缺 `docker` 报错；中文 `cmd.exe` `0xb0` 毒化缓冲；`exit=0` 假成功 | `base_agent.py` 顶层 `import docker`；`_buffer.decode()` 抛异常未清缓冲；失败或无参 `task_done` 致 `final_result` 为空 | 安装加 `--extra evaluation`；`trae-launcher.py` 切 65001 + `mbcs` 清缓冲；核验 `traj.json` `success===true` |
 
 ## 3. WorkBuddy 专属维护经验
 
@@ -894,9 +895,9 @@ WorkBuddy 采用临时 CDP 连接主渲染器执行原生 IPC，其维护要点�
 - **OpenCode 离线测试**：`node --test opencode/scripts/dispatch-opencode.test.mjs`（7/7 通过，2026-11-16 新增） + `node opencode/scripts/verify-no-secrets.mjs`（`clean`）
 - **Gemini CLI 离线测试**：`node --test gemini-cli/scripts/dispatch-gemini.test.mjs`（7/7 通过，2026-11-16 新增） + `node gemini-cli/scripts/verify-no-secrets.mjs`（`clean`）
 - **Cline 离线测试**：`node --test cline/scripts/dispatch-cline.test.mjs`（6/6 通过，2026-11-16 新增） + `node cline/scripts/verify-no-secrets.mjs`（`clean`）
-- **13 路免登录（BYO-Key + 智谱 GLM）桥接离线测试与安全审计** *(2026-11-16 新增，各 6/6 通过且 `verify-no-secrets.mjs` 全部 `clean`)*：
-  - `claude-code`（6/6）、`codex` BYO-Key（6/6）、`copilot`（6/6）、`kimi-code`（6/6）、`pi`（6/6）、`omp`（6/6）、`kilo`（6/6）、`crush`（6/6）、`continue-cli`（6/6）、`iflow`（6/6）、`openclaw`（6/6）、`goose`（6/6）、`aider`（6/6）
-- **总计**：125 项单元测试全部通过，0 失败，0 跳过（原 `qwen-code/` 环境与 6 项测试已按要求卸载删除）。
+- **14 路可插拔外接 API（BYO-Key）桥接离线测试与安全审计** *(2026-11-16 新增，各 6/6 通过且 `verify-no-secrets.mjs` 全部 `clean`)*：
+  - `claude-code`（6/6）、`codex` BYO-Key（6/6）、`copilot`（6/6）、`kimi-code`（6/6）、`pi`（6/6）、`omp`（6/6）、`kilo`（6/6）、`crush`（6/6）、`continue-cli`（6/6）、`iflow`（6/6）、`openclaw`（6/6）、`goose`（6/6）、`aider`（6/6）、`trae-agent`（6/6）
+- **总计**：131 项单元测试全部通过，0 失败，0 跳过（原 `qwen-code/` 环境与 6 项测试已按要求卸载删除）。
 
 ### 3.2 ZCode 桥接器实战核验记录 (Level 1)
 > *（注：本记录为 2026-11-04 在本地针对真实执行链路的联通性实测凭据，仅用于证明进程拉起、思考链捕获与 Token 结算功能有效。架构本身完全支持任意模型，用户可依据当期最新模型自主配置，无需局限于该测试模型。）*
@@ -953,8 +954,8 @@ WorkBuddy 采用临时 CDP 连接主渲染器执行原生 IPC，其维护要点�
   * `qwen-oauth` 免费层已于 `2026-04-15` 停用；桌面端 `qianwen.exe` 依赖 `SecurityGuardSDK64.dll` 私有硬件签名；
   * **方案二（直驱千问桌面端 `cowork-agent-host.asar` 内 `engine/bundle.cjs` + `DASHSCOPE_API_KEY`）**：仅作 ASAR 只读静态源码分析（Level 2），**未编写垫片也未真实体验或实测跑通**。
 
-### 3.7 13 路免登录（BYO-Key + 智谱 GLM）通用 CLI 桥接器实战核验记录 (Level 1, 2026-11-16)
-* **环境**：Windows 11 / Node `v22.15.1` / Bun `1.4.4` / Python `3.11.5` (`~/.local/aider-venv`) / 智谱 GLM Coding Plan (`glm-4.7`)
+### 3.7 通用无头 CLI 桥接器端到端核验记录 (Level 1, 2026-11-16)
+* **环境**：Windows 11 / Node `v22.15.1` / Bun `1.4.4` / Python `3.11.5` (`~/.local/aider-venv`)；*(注：本次联通性验证仅因手头刚好有可用的智谱 GLM 兼容额度，顺带用于校验 OpenAI Chat / Responses / Anthropic 三种标准协议分支；各桥接器本身完全不绑定具体模型商)*
 * **全量验收标准**：每条桥接器均在独立临时隔离目录下依次完成：`--status`、`--dry-run`、Round 1（读 `fixture.json` 并落盘 `result.txt` 为 `343_<agent>-e2e-20261116`）、Round 2（跨进程 `--reuse` 不重读文件召回该字符串）、跨目录 `--reuse` 拒绝（exit=1）以及 `verify-no-secrets.mjs`（`clean`）。
 * **逐项实测耗时与结果**：
   * **Claude Code**（v2.1.325、`--bare`）：R1 `23.8s` (`tools=3`)、R2 `9.3s`；
@@ -969,7 +970,8 @@ WorkBuddy 采用临时 CDP 连接主渲染器执行原生 IPC，其维护要点�
   * **iFlow CLI**（v0.5.19、`IFLOW_API_KEY` + `-o exec-info.json`）：R1 `27.3s` (`rounds=4`)、R2 `9.3s`；
   * **OpenClaw**（v2026.5.7、`plugins.enabled=false` + `skipBootstrap=true`）：R1 `55.9s`（工作区零 `SOUL.md` 残留）、R2 `39.3s`；
   * **Goose**（v1.59.2、`goose.exe` + 禁 Keyring）：R1 `20.7s` (`tools=3`)、R2 `6.0s`（另在并发压测时真实捕获 `429 Rate limit exceeded`）；
-  * **Aider**（v0.86.2、Python venv + `--target`/`--read`）：R1 `Applied edit to result.txt` (`763->417 tokens`)、R2 `--chat-mode ask` 准确召回。
+  * **Aider**（v0.86.2、Python venv + `--target`/`--read`）：R1 `Applied edit to result.txt` (`763->417 tokens`)、R2 `--chat-mode ask` 准确召回；
+  * **Trae Agent (开源)**（`bytedance/trae-agent`、`uv` + Python 3.12.16 + `trae-launcher.py` 补丁）：R1 `33.9s` (`tools=7`、`343_trae-e2e-20261116`)、R2 `--reuse` `13.4s` (`tools=2`) 准确召回。
 * **未验证项**：全部 13 路桥接器的超时 `taskkill /T /F` 树清理实测触发、多文件大型构建循环及部分高阶可选参数；详见各桥接器子目录 `README.md` 与 [`AGENT_USAGE_AND_BYPASS_METHODOLOGY.md`](../AGENT_USAGE_AND_BYPASS_METHODOLOGY.md)。
 
 ## 4. 全量敏感信息与脱敏合规审计

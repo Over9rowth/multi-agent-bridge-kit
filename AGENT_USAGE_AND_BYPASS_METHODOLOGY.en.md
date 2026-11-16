@@ -1,17 +1,14 @@
-# Mainstream Coding Agents: BYO-Key Skip-Login, Architecture Comparison, and Environment & Network Requirements
+# Part II (Supporting Guide): Using Non-Official Models & External API Keys on Your Preferred Agent
 
 [简体中文](AGENT_USAGE_AND_BYPASS_METHODOLOGY.md) | **English**
 
-> **Purpose**: This guide complements `AGENT_BRIDGE_METHODOLOGY.en.md` by answering three practical engineering questions for open-source multi-agent orchestration:
-> 1. **How can Coding Agents that normally require paid subscriptions or interactive login be used cleanly with your own API key (BYO-Key)? Which tools block unauthenticated BYOK?**
-> 2. **What are the real architectural and workflow differences across 20 mainstream CLI & desktop Coding Agents?**
-> 3. **What are each Agent's local runtime, OS permission, and network/proxy requirements (e.g., overseas endpoints requiring proxies vs. domestic direct endpoints)?**
->
-> **Verification Boundary**: All 13 BYO-Key headless paths (`claude-code`, `codex --byok`, `copilot`, `kimi-code`, `pi`, `omp`, `kilo`, `crush`, `continue-cli`, `iflow`, `openclaw`, `goose`, `aider`) were verified end-to-end on Windows 11 with file read/write tools and cross-process `--reuse`. Existing desktop/CLI adapters (`antigravity`, `workbuddy`, `dsh`, `zcode`, `opencode`, `gemini-cli`, `cline`) remain documented with their verified scopes. Unverified paths (such as Qwen Desktop ASAR `engine/bundle.cjs` Option 2) are explicitly marked **not experienced / unverified**.
+> **Role of This Document (Supporting Track)**:
+> - **Part I (Main Track)** is [`AGENT_BRIDGE_METHODOLOGY.en.md`](AGENT_BRIDGE_METHODOLOGY.en.md), which focuses on **how to build bridges across different local Agents** (the 5 bridging archetypes, 5-step discovery chain, session/permission isolation, and 3-layer verification).
+> - **Part II (This Document)** is a supporting guide answering a practical companion question: **once you pick a favorite Agent, how do you plug non-official models or external API keys (e.g., Zhipu GLM, DeepSeek, OpenRouter, or a custom endpoint) into it cleanly without leaking secrets or touching your existing subscriptions**—plus what local runtimes and proxy rules each Agent demands.
 
 ---
 
-## 1. Bypassing Subscription Logins via BYO-Key (4 Engineering Patterns)
+## 1. Four Engineering Ways to Attach External API Keys to Your Favorite Agent
 
 Many coding CLIs default to vendor subscriptions (Claude Pro/Max, ChatGPT Plus/Pro, GitHub Copilot, Kimi Code, Google Gemini OAuth, iFlow, Kilo Gateway, etc.). Based on reverse-engineering local CLI configurations and tools like **CC Switch** (`farion1231/cc-switch`), BYO-Key skip-login falls into **four distinct patterns**:
 
@@ -73,7 +70,7 @@ Not every tool with an API key input field allows unauthenticated or free-tier B
    - **Trae's 3 Distinct Surfaces (⚠️ Not installed/tested locally; verified via official docs, `pyproject.toml` & community reports)**:
      - **Trae IDE** (`trae.cn` / `trae.ai`): **Cannot bypass login, and custom models are cloud-relayed & plan-gated**—Trae IDE requires online account authentication (offline triggers error 997), routes custom-model turns through Trae's `/custom_model` WebSocket backend rather than direct localhost calls, and restricts Free accounts (`identity: 0, permission: 0`) with `503 No available accounts` unless upgraded to Pro/Enterprise. To use BYO-Key GLM inside Trae IDE without membership, install open-source VS Code extensions (**Cline / Kilo Code / Continue**) instead;
      - **Commercial `TraeCode CLI` (`traecli`)**: Restricted to **TRAE CN Enterprise Flagship** accounts via `traecli login` / `TRAECLI_PERSONAL_ACCESS_TOKEN`—unavailable without enterprise authentication;
-     - **Open-Source `bytedance/trae-agent` (`trae-cli`)**: MIT-licensed and **100% zero-login BYO-Key capable** (`trae-cli run --provider openai --model-base-url ...` or `OPENAI_API_KEY`/`OPENAI_BASE_URL` or `trae_config.yaml`), requiring **Python ≥ 3.12** and `uv`.
+     - **Open-Source `bytedance/trae-agent` (`trae-cli`)**: MIT-licensed and **100% zero-login BYO-Key capable**—now bridged and E2E-verified in `trae-agent/` using `uv` + Python 3.12.16 (`--extra evaluation` for `docker`, `trae-launcher.py` for Windows `cmd.exe` UTF-8 buffer safety, and `traj.json` terminal check; R1 `33.9s`, R2 `--reuse` `13.4s`).
 3. **Desktop Loopback / Hardware-Signed Clients (Antigravity, WorkBuddy, DSH, Qianwen Desktop)**:
    - Desktop IDE bridges (`Antigravity`, `WorkBuddy`, `DSH`) legally reuse an already-authenticated desktop session over loopback RPC/CDP/Cookie exchange without extracting account tokens.
    - For Qwen (`@qwen-code/qwen-code` v0.27.4 & Qianwen Desktop): `qwen-oauth` free tier was discontinued on `2026-04-15`; the desktop app uses native hardware signing (`SecurityGuardSDK64.dll`), which cannot and must not be forged. Static inspection of `cowork-agent-host.asar` (`engine/bundle.cjs`) showed a `DASHSCOPE_API_KEY` branch, but **this desktop Option 2 was never built or tested in practice (explicitly unverified)**.

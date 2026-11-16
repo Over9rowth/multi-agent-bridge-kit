@@ -1,17 +1,14 @@
-# 主流 Coding Agent 使用、免会员跳过登录（BYO-Key）与环境门槛方法论
+# 第二部分（辅助篇）：如何在自己喜欢的 Agent 上使用非官方模型 / 接入外来 API Key 与环境门槛
 
 **简体中文** | [English](AGENT_USAGE_AND_BYPASS_METHODOLOGY.en.md)
 
-> **文档定位**：本文件与 `AGENT_BRIDGE_METHODOLOGY.md` 配套，系统解答工程实践中三大核心问题：
-> 1. **原本绑定官方会员/订阅登录的 Agent，如何合规、无侵入地跳过会员登录，直接接入自有 API Key（如智谱 GLM Coding Plan / 标准 API）使用？**
-> 2. **市面上 20 款主流 CLI / 桌面端 Coding Agent 之间在底层架构、通信协议、工具链形态与核心能力上究竟有什么区别？**
-> 3. **各款 Agent 对本地运行环境、权限沙箱以及网络环境（境外 AI 代理 vs 国内直连端点）的要求高低如何，各自有哪些实测必踩坑点？**
->
-> **实证边界声明**：文中所有 13 条智谱 GLM 免登录无头链路（`claude-code`、`codex` BYO-Key、`copilot` BYOK、`kimi-code`、`pi`、`omp`、`kilo`、`crush`、`continue-cli`、`iflow`、`openclaw`、`goose`、`aider`）均已在 2026-11-16 于 Windows 11 本机通过真实端到端读写与 `--reuse` 会话复用验收；原有 7 条本地桥接（Antigravity、WorkBuddy、DSH、ZCode、OpenCode、Gemini CLI、VS Code Cline）亦保持实测或代码核对记录；千问桌面端 `cowork-agent-host.asar` 方案二仅做过只读源码分析，**未编写垫片也未实际体验过**，文中已单列标注。
+> **本篇定位（辅助手段，而非建桥目的本身）**：
+> - **核心主篇**见 [`AGENT_BRIDGE_METHODOLOGY.md`](AGENT_BRIDGE_METHODOLOGY.md)——重点讲解**如何给不同架构的本地 Agent 建桥**（五类技术原型、五步建桥法、50+ 避坑库）；
+> - **本篇（辅助篇）**解决的是另一个实际工程诉求：**当你选定了自己喜欢的某款 Agent（想用它的工具链或交互体验），但不想被官方会员或单一厂商模型绑定时，如何把外来的 API Key（如智谱 GLM、DeepSeek、OpenRouter 或私有兼容网关）无痕、安全地“拼接”进去**，以及不同 Agent 对本地运行时与网络代理的挑剔程度。
 
 ---
 
-## 一、 原本要会员登录的 Agent，如何免订阅直接使用自有 Key（BYO-Key / CC-Switch 原理）
+## 一、 如何把外来 API Key / 非官方模型拼接到自己喜欢的 Agent 上（4 种工程手法）
 
 市面上主流编码 Agent 往往默认绑定厂商自家账号体系（如 Claude Pro/Max、ChatGPT Plus/Pro、GitHub Copilot 订阅、Kimi Code 会员、Google Gemini OAuth、iFlow 登录、Kilo Gateway 等）。但工程化场景下，开发者经常希望把**同一把 API Key（例如智谱 GLM Coding Plan、DeepSeek、OpenRouter 或自建网关）**复用进所有 Agent 中。
 
@@ -83,7 +80,7 @@
    - **Trae 三条产品线区分（⚠️ 本机未安装实测，基于官方文档、源码与社区实证核对）**：
      - **Trae IDE**（`trae.cn` / `trae.ai`）：**同样不能免登录，且自定义模型走云端中转并受账号套餐限制**——社区逆向与官方论坛已证实：① 必须联网登录 Trae 账号激活 AI 面板（断网报 997）；② 添加自定义 OpenAI 模型后，实际请求通过 WebSocket 走 Trae 官方 `/custom_model` 转发而非客户端直连；③ Free 免费账号（`identity: 0, permission: 0`）实际发消息会受限报 `503 No available accounts`（升级 Pro 或企业版后放行）。若要在 Trae IDE 内免会员用智谱 GLM，建议改在扩展中装 **Cline / Kilo Code / Continue**；
      - **商业版 `TraeCode CLI` (`traecli`)**：官方仅对 **TRAE CN 企业旗舰版**开放，强依赖 `traecli login` / `TRAECLI_PERSONAL_ACCESS_TOKEN`，个人版与无账号均不可用；
-     - **开源版 `bytedance/trae-agent` (`trae-cli`)**：MIT 开源、**100% 支持免登录 BYO-Key**（`trae_config.yaml` 或 `OPENAI_API_KEY` + `OPENAI_BASE_URL` / `--model-base-url` 跑 `trae-cli run`），但要求 **Python ≥ 3.12** 与 `uv` 环境（尚未在本机搭建实测）。
+     - **开源版 `bytedance/trae-agent` (`trae-cli`)**：MIT 开源、**100% 支持免登录 BYO-Key**——现已在 `trae-agent/` 搭桥并实测跑通（基于 `uv` + Python 3.12.16，安装需加 `--extra evaluation` 补齐 `docker` 依赖，并用 `trae-launcher.py` 修复 Windows 中文 `cmd.exe` GBK 缓冲毒化与 `traj.json` 终态校验；R1 `33.9s`、R2 `--reuse` `13.4s`）。
 3. **桌面私有 IPC / 本地动态令牌类（Antigravity、WorkBuddy、DSH）**：
    - 这些工具本身是依托已登录的桌面宿主运行的（如 Antigravity 的 ConnectRPC + `--csrf_token`、WorkBuddy 的临时 CDP + `__wbInvoke`、DSH 的启动令牌换签名 Cookie）。桥接器的设计原则是**合法复用已开启的本机桌面会话服务**，不提取桌面加密 Cookie，也不篡改安装包。
 4. **硬件签名与已停用 OAuth（以千问生态为例）**：

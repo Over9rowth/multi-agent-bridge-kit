@@ -1,10 +1,26 @@
-# Local Agent Bridge Methodology & Pitfall Knowledge Base (Pitfalls 01–50)
+# Part I (Main Track): How to Build Local Bridges Across Different Agents
 
 [简体中文](AGENT_BRIDGE_METHODOLOGY.md) | **English**
 
-> **Scope & Evolution**: This methodology was originally established on **Antigravity** (loopback ConnectRPC + `--csrf_token` + binary symbol scanning) and subsequently validated and generalized across **20 mainstream desktop and CLI Coding Agents** (`Codex`, `WorkBuddy`, `DSH`, `ZCode`, `OpenCode`, `Gemini CLI`, `VS Code Cline`, `Claude Code`, `GitHub Copilot CLI`, `Kimi Code`, `Pi`, `Oh My Pi`, `Kilo`, `Crush`, `Continue CLI`, `iFlow`, `OpenClaw`, `Goose`, and `Aider`).
->
-> **Core Insight**: Transport details (loopback ports, CSRF headers, CDP, SQLite patches, or stdio JSONL) **do not transfer verbatim** across different Agents. What transfers universally is the **5-Step Discovery & Contract Reasoning Chain**, combined with **UTF-8 Task-File Dispatch**, **Environment-Variable Secret Indirection**, and **3-Layer Terminal Verification**.
+> **Two-Part Structure of This Methodology**:
+> - **Part I (This Document — Primary Focus)**: **How to build reliable, reusable local bridges across different Agents** (so an Architect main Agent can discover, isolate, dispatch UTF-8 work orders to, and verify any local worker Agent—whether desktop IDE, embedded runtime, or headless CLI).
+> - **Part II (Supporting Guide)**: [`AGENT_USAGE_AND_BYPASS_METHODOLOGY.en.md`](AGENT_USAGE_AND_BYPASS_METHODOLOGY.en.md) — **How to use non-official models / attach external API keys to your preferred Agent** (and local runtime / proxy requirements), offered as an optional enabler for users who want to plug custom keys into their favorite Agent.
+
+---
+
+## 0. The Five Bridging Archetypes (What Actually Determines How a Bridge Is Built)
+
+Across 20+ mainstream desktop and CLI Agents, what determines bridge design is **not the model or API key**, but **the control surface the target Agent exposes**:
+
+| Archetype | Representative Agents | Discovery (Step 1) | Transport & Contract (Step 2) | Terminal Verification (Step 5) |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Desktop Loopback RPC / Web Server** | Antigravity, DSH | Process cmdline ports, `--csrf_token`, or startup-log `?token=` | ConnectRPC JSON or Cookie-backed HTTP RPC envelopes | Cursor baseline + consecutive stable `IDLE` / `asOfSeq` polls |
+| **2. Desktop DevTools (CDP + Native IPC)** | WorkBuddy | Ephemeral `127.0.0.1` CDP port + unique main renderer target | `Runtime.evaluate` calling internal `__wbInvoke` IPC | `stopReason=end_turn` + `SUCCESS` + Restore normal launch |
+| **3. Native Headless CLI (stdio JSONL / JSON)** | Codex, Claude Code, Gemini CLI, Copilot, Kimi, Pi, OMP, Kilo, OpenCode, iFlow, OpenClaw, Goose | Native binary (`*.exe`, never `.cmd` shims) or JS entrypoint | Closed `stdin` or `--prompt <file>` + `stream-json` / `--json` | **Never trust `exit=0` alone**: require explicit protocol terminal event + host-observed model |
+| **4. Embedded Engine / Direct Core Import** | VS Code Cline (`@cline/core`), ZCode (`zcode.cjs`) | Extension/app ESM or CJS core bundle | Direct Node import (with `CONNECT` proxy `fetch` or `node:sqlite` patch if needed) | Core event subscription + local `sessions.db` SQLite audit |
+| **5. Post-Run DB / Diff-Only CLI** | Crush, Continue (`cn`), Aider | Native binary / isolated Python venv | Run non-interactively, then inspect `session last --json` / `ls --json` / edit diffs | Session DB audit or independent file-diff verification |
+
+> **Core Insight**: You cannot copy-paste protocols between Agents. What transfers universally is the **5-Step Bridging Chain**, **UTF-8 Task-File Dispatch (`--file`)**, **Workspace/Session Isolation**, and **3-Layer Closed-Loop Verification**.
 
 ---
 
@@ -66,7 +82,9 @@ When onboarding any new local Agent (or upgrading after a major version bump):
 - **41 — `stream-json` Soft Denials**: Always verify `result.subtype === "success"`, `!is_error`, and `permission_denials.length === 0`.
 - **Qwen Desktop Option 2 (⚠️ Unverified / Never Experienced)**: Static inspection of `cowork-agent-host.asar` (`engine/bundle.cjs`) revealed a `DASHSCOPE_API_KEY` branch and `start/stop/onChatMessage` exports, but **no runtime shim was ever built or tested**.
 
-### 13-Way BYO-Key Skip-Login & Environment Pitfalls (42–50)
+### Headless CLI Bridging & BYO-Key Adapter Pitfalls (42–50)
+
+> *(Note: End-to-end smoke checks used an available GLM API quota purely as a multi-protocol test target; the bridging rules and pitfalls below apply equally to any OpenAI/Anthropic/Responses-compatible provider.)*
 - **42 — Claude `--bare` & Copilot CLI `anthropic` BYOK**: Claude `--bare` skips onboarding/OAuth cleanly; Copilot CLI must bypass `copilot-shim` to invoke native `copilot.exe`, set `COPILOT_OFFLINE=true`, and use `COPILOT_PROVIDER_TYPE=anthropic` to prevent HTTP 400 from missing `reasoning_content` replay on tool turns.
 - **43 — Codex BYO-Key Isolation**: Skip stale empty version folders in `LocalAppData\OpenAI\Codex\bin\`; keep isolated `CODEX_HOME` outside `%TEMP%`; omit `--ignore-user-config` so isolated `config.toml` + `models.json` load cleanly.
 - **44 — Pi / OMP Dialect, Bun & Toolset Divergence**: Set `compat.supportsDeveloperRole: false` for GLM; OMP requires native `bun.exe` (ES2025 `using`) and uses `glob` rather than Pi's `ls`/`find`.
@@ -75,4 +93,5 @@ When onboarding any new local Agent (or upgrading after a major version bump):
 - **47 — Crush Config Pollution & Goose Keyring/Chunking**: Set `CRUSH_GLOBAL_CONFIG` to keep `crush.json` out of user repos; set `GOOSE_DISABLE_KEYRING=true` and stitch `stream-json` text by `message.id`.
 - **48 — Domestic Proxy Stripping & Concurrent 429 Limits**: Strip `HTTP_PROXY`/`HTTPS_PROXY` automatically for domestic endpoints (`bigmodel.cn`, `z.ai`); stagger parallel multi-agent bursts to avoid account-level `429 Rate limit exceeded`.
 - **49 — Continue CLI Stdin & Aider Scope**: Windows `cn -p` ignores piped stdin (pass `--prompt <taskFile>` and `--fork` for reuse); Aider is diff-based (pass `--target`/`--read` and default to `--chat-mode ask`).
-- **50 — Cursor Free Tier, Qoder CLI & Trae Auth vs. Open-Source Split**: Cursor routes Agent/Chat through `api2.cursor.sh` and blocks custom models on Free plans (`The model ... does not work with your current plan or api key`; `PrivateInference` requires Team/Enterprise `readTeamEnablement()`); `@qoder-ai/qodercli` requires `qodercli login` (`NonInteractiveAuthRequiredError`) before unlocking BYOK `customModels`; Trae splits into Trae IDE (requires online login, relays custom models via `/custom_model` WebSocket, and restricts Free `identity: 0` accounts with `503 No available accounts`), commercial `traecli` (Enterprise Flagship only), and MIT open-source `bytedance/trae-agent` (`trae-cli`, Python ≥ 3.12 + `uv`, zero-login BYO-Key capable; not tested locally). For Cursor/Trae IDEs without Pro, use VS Code-compatible BYOK extensions (Cline/Kilo/Continue) or run the 13 BYO-Key CLI bridges in the IDE terminal.
+- **50 — Cursor Free Tier, Qoder CLI & Trae Auth vs. Open-Source Split**: Cursor routes Agent/Chat through `api2.cursor.sh` and blocks custom models on Free plans (`The model ... does not work with your current plan or api key`; `PrivateInference` requires Team/Enterprise `readTeamEnablement()`); `@qoder-ai/qodercli` requires `qodercli login` (`NonInteractiveAuthRequiredError`) before unlocking BYOK `customModels`; Trae splits into Trae IDE (requires online login, relays custom models via `/custom_model` WebSocket, and restricts Free `identity: 0` accounts with `503 No available accounts`), commercial `traecli` (Enterprise Flagship only), and MIT open-source `bytedance/trae-agent` (bridged and E2E-verified in `trae-agent/`). For Cursor/Trae IDEs without Pro, use VS Code-compatible BYOK extensions (Cline/Kilo/Continue) or run our headless bridges.
+- **51 — `bytedance/trae-agent` Missing `docker` Core Dep, Windows `cmd.exe` GBK Buffer Poisoning & `exit=0` False Success**: `base_agent.py` imports `docker` unconditionally even though `pyproject.toml` places `docker` inside `[project.optional-dependencies].evaluation` (must install with `--extra evaluation`); on Chinese Windows locales, `bash_tool.py` starts `cmd.exe /v:on` and calls strict UTF-8 `_buffer.decode()`, throwing `UnicodeDecodeError` on GBK bytes (e.g. `0xb0`) before clearing `_buffer`, permanently poisoning every subsequent shell call until `max_steps` exhausts; `trae-cli run` also exits `0` when `success: false`, and `final_result` is often `""` when `task_done` completes without trailing prose. **Fix**: Preload `trae-agent/scripts/trae-launcher.py` (`chcp 65001` + `mbcs` fallback & buffer flush on decode error), set `PYTHONUTF8=1`, check `trajectory.success === true`, and fall back to the last non-empty `llm_response.content` in `agent_steps`.

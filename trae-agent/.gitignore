@@ -1,0 +1,9 @@
+private/
+*.state.json
+.trae-bridge-state.json
+last-result.json
+trae_config.yaml
+traj*.json
+active-task.md
+*.lock
+*.tmp

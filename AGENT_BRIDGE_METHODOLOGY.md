@@ -1,14 +1,30 @@
-# 本地 Agent 桥接器（Agent-to-Agent Local Bridge）方法论与样本手册
+# 第一部分（主篇）：如何给不同的本地 Agent 建桥（方法论与避坑库）
 
 **简体中文** | [English](AGENT_BRIDGE_METHODOLOGY.en.md)
 
-> **文档定位**：本文件记录了在 Windows 本地环境下，让「主 Agent（总设计师/总架构师）」无需任何第三方反代软件、无需额外配置 API Key，直接通过本机回环接口（Loopback RPC）自动发现并差遣本地正在运行的另一款 Agent IDE（以 **Antigravity** 为标准样本）及其指定子模型（如 `Gemini 3.8 Flash`）的完整逆向探测方法论、协议规范、热切换指南与主 Agent 引导提示词模板。
->
-> **适用范围补充（2026-11-04）**：本文件的「回环端口 + CSRF Token + 二进制符号扫描」是针对 Antigravity 的**实现细节**，不是通用前提。已实测 **OpenAI Codex（Windows 桌面版 / CLI 0.166.0-alpha.5.1）不提供可被外部进程复用的回环 RPC 端点**：其 `app-server` 由桌面 App 以 stdio 独占，daemon control socket 未运行；正确桥接点是官方无头 CLI `codex exec --json`（JSONL over stdio）。可迁移的是「找官方无头入口 → 复用账号态 → 会话持久化 → 只回摘要」这条链路。完整五步映射、坑点 05–10 与自审坑点 20、真机实测数据见同目录 `CODEX_BRIDGE_EXPERIENCE.md`，桥接器见 `dispatch-codex-template.mjs`。
->
-> **适用范围补充（2026-11-04 续，DSH）**：另两个样本进一步说明「回环 RPC」本身也不是通用前提——**WorkBuddy 5.9.4** 走临时 CDP → 渲染器 `__wbInvoke` → 原生 IPC；**DSH Desktop 0.1.1 / `@deepseek-ai/dsh@0.1.5-rc.2`** 走 Harness 自带 Web Server 的 `POST /api/<endpoint>` Connection RPC，用 `harness.log` 里的每进程启动令牌在 `GET /?token=` 换签名 Cookie，**不接受 CSRF 头、`Authorization` 头或 API query token**，也不需要克隆任何 `plannerConfig`。第 2、4 步的探测对象因此完全不同：Antigravity 扫 Go 二进制符号表，Codex 读官方无头 CLI 的 `--help` 与 models cache，WorkBuddy 读渲染器 IPC 契约，DSH 只读 `node_modules` 里的生成描述符。**可迁移的始终是「动态发现 → 只读还原契约 → 查实时注册表 → 用目标原生配置 → 闭环终态校验」这条推理链，以及工单文件派单与黄金校验；不是任何具体端口、头部、字段名或自动审批钩子（后三个样本均不自动批准）**。完整五步映射、9 条新踩坑、真机证据与未验证项见 `dsh/README.md`，桥接器见 `dsh/scripts/dispatch-dsh.mjs`。
->
-> **适用范围补充（2026-11-16 续，OpenCode）**：第六个样本 **OpenCode（`@opencode/cli` v2.2.7）** 虽然自身运行了随机端口后台 HTTP 服务（本次为 `127.0.0.1:28894`）并暴露 `/openapi.json`，但同样**无需逆向提取会话令牌或手动拼接请求头**——官方 CLI 已提供 `opencode service status`、`opencode api`（复用本机服务发现与鉴权）以及无头 JSONL 通道 `opencode run --format json`。可迁移方法论在此进一步收敛为：**「官方无头执行流（JSONL over stdio）+ 官方管理 API 只读注册表/服务端复核」**的混合架构，兼顾零凭据提取与主机侧独立验真。完整实现与真机证据见 `opencode/README.md` 与 `opencode/scripts/dispatch-opencode.mjs`。
+> **本套理论的分篇结构**：
+> - **第一部分（本文件，核心主篇）**：聚焦**「如何给不同架构的本地 Agent 搭建可复用桥接器」**——即如何让「主 Agent（总架构师）」发现并驱动任意本地子 Agent（无论对方是桌面 IDE、扩展内核还是无头 CLI），完成工单派发、权限隔离、会话复用与三层终态验收。
+> - **第二部分（辅助篇）**：参见 [`AGENT_USAGE_AND_BYPASS_METHODOLOGY.md`](AGENT_USAGE_AND_BYPASS_METHODOLOGY.md)——聚焦**「如何在自己喜欢的 Agent 上使用非官方模型 / 拼接外来 API Key」**，以及各 Agent 对本地运行时与网络代理的环境门槛（供用户在需要摆脱官方订阅限制时选用）。
+
+---
+
+## 零、 先看懂本质：不同 Agent 建桥的五种技术原型
+
+实践覆盖 20+ 款主流桌面与 CLI Agent 后，真正决定“桥怎么搭”的不是模型或 API Key，而是**目标 Agent 对外暴露的控制面形态**。市面上所有 Agent 的建桥方式可归为五类原型：
+
+| 原型 | 典型代表 | 核心探测对象（第 1 步） | 协议与派单通道（第 2 步） | 终态与产物验收要点（第 5 步） |
+| :--- | :--- | :--- | :--- | :--- |
+| **原型 1：桌面回环 RPC / Web Server** | Antigravity, DSH | 进程命令行动态端口 / `--csrf_token` / 启动日志 `?token=` | ConnectRPC JSON 或 Cookie + HTTP RPC 信封 | 基线游标增量 + 连续两次稳定 IDLE / `asOfSeq` 防抖 |
+| **原型 2：桌面调试通道（CDP + 原生 IPC）** | WorkBuddy | 临时 `127.0.0.1` CDP 端口 + 唯一主渲染器页面 | `Runtime.evaluate` 调用 `__wbInvoke` 内部 IPC | `stopReason=end_turn` + `SUCCESS` + 使用后 Restore 恢复桌面 |
+| **原型 3：原生无头 CLI（stdio JSONL / JSON）** | Codex, Claude Code, Gemini CLI, Copilot, Kimi, Pi, OMP, Kilo, OpenCode, iFlow, OpenClaw, Goose | 原生 `.exe` 或 JS 入口（拒绝 `.cmd`/`.bat` 包装脚本） | 闭合 `stdin` 或 `--prompt <file>` + `--output-format stream-json` / `--json` | **绝不轻信 `exit=0`**：必须捕获协议终态事件（`turn.completed`/`result.subtype=success`/`agent_end`/`complete`）与主机侧 `observedModel` |
+| **原型 4：内嵌引擎 / 库直调** | VS Code Cline (`@cline/core`), ZCode (`zcode.cjs`) | 扩展或应用目录内的 ESM/CJS 核心包 | 直接在 Node 进程 `import` 启动（必要时打 `CONNECT` 代理或 `node:sqlite` 补丁） | 监听引擎事件流 + 查本地 `sessions.db` SQLite 核验 |
+| **原型 5：事后查库 / Diff 专用 CLI** | Crush, Continue (`cn`), Aider | 原生二进制 / Python 隔离 venv | 跑完后调用 `session last --json` / `ls --json` / 解析 `Applied edit` 与聊天历史文件 | 二次检索会话库或目标文件 Diff 落盘核对 |
+
+> **关键认知**：不同 Agent 之间**不能靠改脚本名字复用代码**（Antigravity 的 ConnectRPC、WorkBuddy 的 CDP、Codex 的 `exec --json`、Cline 的 `@cline/core` 协议完全不同）；**真正跨一切 Agent 通用的，是下面这套「五步建桥推理链」与「派单 / 验收铁律」**。
+
+---
+
+> **历史演进注记（2026-11-04 ～ 2026-11-16）**：本文件最初以 **Antigravity**（`127.0.0.1` ConnectRPC + CSRF Token）为样本编写，随后在 Codex、WorkBuddy、DSH、ZCode、OpenCode、Gemini CLI、VS Code Cline 以及 13 款主流 CLI 上验证并抽象出了上述五类建桥原型（完整工程细节亦收录于 `docs/ENGINEERING_MANUAL_v0.2.zh-CN.md`）。
 
 ---
 
@@ -498,9 +514,9 @@ POST /api/session/prompt    Content-Type: application/json    Cookie: <signed>
 
 ---
 
-## 2026-11-16 · 主流 Coding Agent 免登录（BYO-Key + 智谱 GLM）通用方法与避坑扩展（坑点 42–49）
+## 2026-11-16 · 多形态无头 CLI 建桥扩展与外接 API 避坑（坑点 42–50）
 
-> **完整专题文档**：参见同目录 [`AGENT_USAGE_AND_BYPASS_METHODOLOGY.md`](AGENT_USAGE_AND_BYPASS_METHODOLOGY.md)，系统阐述 20 款 Agent 免会员跳过登录、架构区别及环境/代理要求梯度。本节沉淀本次 13 路真机扩展过程中新发现的共性/特性踩坑 42–49。
+> **完整外接模型指南**：参见辅助篇 [`AGENT_USAGE_AND_BYPASS_METHODOLOGY.md`](AGENT_USAGE_AND_BYPASS_METHODOLOGY.md)，系统阐述如何在偏好的 Agent 上拼接非官方模型/外来 Key、各工具差异及环境/代理要求梯度。本节沉淀建桥过程中捕获的协议与运行时踩坑 42–50（本次连通性测试使用手头可用的 GLM 三协议兼容额度验证，所有结论对任意兼容端点通用）。
 
 ### 坑点 42：Claude Code `--bare` 与 Copilot CLI `COPILOT_OFFLINE=true` + Anthropic 协议跳过推理续轮 400（2026-11-16）
 - **现象与机制**：Claude Code 传 `--bare` 可直接绕过首次引导与 Claude.ai 登录校验（等价于 CC Switch 写入 `~/.claude.json` `hasCompletedOnboarding: true`），配合 `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` 与智谱 `/api/anthropic` 即可免登录跑通；而 GitHub Copilot CLI 不仅要避开 VS Code `copilot-shim\copilot.exe` 占位符去调用 npm 包内置 `copilot.exe`，若在 BYOK 下走 `openai` 协议连接思考模型，工具续轮不会回传 `reasoning_content` 易触发 400。
@@ -535,7 +551,11 @@ POST /api/session/prompt    Content-Type: application/json    Cookie: <signed>
 - **根治方案**：Continue 显式将工单落地并通过 `--prompt <active-task.md>` 投递、复用走 `--fork`；Aider 用 `--target`/`--read` 明确上下文，默认只读传 `--chat-mode ask`，施工传 `--write`。
 
 ### 坑点 50：Cursor 免费版、Qoder CLI 与 Trae 的“账号门控 vs 开源分支”差异（2026-11-16）
-- **现象与实证**：① Cursor 3.29.x（`stripeMembershipType = free`）即使开启 `Override OpenAI Base URL` 并填入自定义 Key，请求仍经 `https://api2.cursor.sh` 中转且被套餐门控拦截（`The model ... does not work with your current plan or api key`）；② `@qoder-ai/qodercli` v1.1.89 虽支持 `customModels` BYOK，但 `authType` 仅接受 `qoder-browser` / `qoder-pat`，未登录时启动阶段 `BUd()` 直接抛 `NonInteractiveAuthRequiredError: Not logged in`；③ Trae 分为三线：Trae IDE 需联网登录且自定义模型经 WebSocket `/custom_model` 转发（免费版 `identity: 0` 会受限报 `503 No available accounts`）；商业 `traecli` 仅限企业旗舰版；仅 MIT 开源的 `bytedance/trae-agent`（Python ≥ 3.12 + `uv`）支持完全免登录 BYO-Key（未在本机安装实测）。
-- **根治方案**：对强制云端中转或强先验登录的软件不尝试破解；Cursor IDE 用户改在内部装开源插件（Cline / Kilo / Continue）或从终端直接调用本套件 13 路免登录桥接器；Qoder CLI 如需使用其 BYOK 须先完成账号登录；Trae 若追求完全免登录脚本化，应选开源 `bytedance/trae-agent`。
+- **现象与实证**：① Cursor 3.29.x（`stripeMembershipType = free`）即使开启 `Override OpenAI Base URL` 并填入自定义 Key，请求仍经 `https://api2.cursor.sh` 中转且被套餐门控拦截（`The model ... does not work with your current plan or api key`）；② `@qoder-ai/qodercli` v1.1.89 虽支持 `customModels` BYOK，但 `authType` 仅接受 `qoder-browser` / `qoder-pat`，未登录时启动阶段 `BUd()` 直接抛 `NonInteractiveAuthRequiredError: Not logged in`；③ Trae 分为三线：Trae IDE 需联网登录且自定义模型经 WebSocket `/custom_model` 转发（免费版 `identity: 0` 会受限报 `503 No available accounts`）；商业 `traecli` 仅限企业旗舰版；**只有 MIT 开源的 `bytedance/trae-agent` 支持完全免登录 BYO-Key（已独立成桥 `trae-agent/` 并真机实测跑通）**。
+- **根治方案**：对强制云端中转或强先验登录的软件不尝试破解；Cursor/Trae IDE 用户改在内部装开源插件（Cline / Kilo / Continue）或从终端调用本套件无头桥接器；Trae 引擎直接走开源 `trae-agent/` 桥接器。
+
+### 坑点 51：`bytedance/trae-agent` 的 `docker` 依赖漏标、Windows `cmd.exe` GBK 毒化缓冲与 `exit=0` 假成功（2026-11-16，Trae Agent）
+- **现象与根因**：① `trae_agent/agent/base_agent.py` 顶层无条件 `import docker`，但 `pyproject.toml` 却将 `docker` 放进 `[project.optional-dependencies].evaluation`，导致 `uv sync --no-dev` 启动即报 `ModuleNotFoundError: No module named 'docker'`；② Windows 中文环境下 `bash_tool.py` 拉起 `cmd.exe /v:on` 后严格按 UTF-8 调用 `_buffer.decode()`，只要出现一次中文报错（如 GBK 字节 `0xb0`），就会在 `_buffer.clear()` 执行前抛 `UnicodeDecodeError` 并永久毒化缓冲，后续所有 `bash` 工具全部失败直到耗尽 `max_steps`；③ 超步数或任务失败时 `trae-cli run` 仍返回 `exit=0`；而模型调用无参 `task_done` 结束时 `traj.json` 的 `final_result` 字段可能为空字符串（真实回复位于前序 `agent_steps[].llm_response.content`）；④ `trae-agent` 的 `--provider openai` 走 Responses API（`/api/v1`），若走标准 Chat/Anthropic 端点需设 `--provider anthropic`（`/api/anthropic`）。
+- **根治方案**：安装同步必须附带 `--extra evaluation`；通过预加载启动器 `trae-agent/scripts/trae-launcher.py` 在 `_BashSession.start()` 切 `chcp 65001` 并清缓冲、在 `run()` 捕获 `UnicodeDecodeError` 后用 `mbcs` 降级解码并清理 `_buffer`（零源码篡改）；桥接器强制解析 `--trajectory-file` 校验 `success === true` 且回退读取 `llm_response.content`。
 
 

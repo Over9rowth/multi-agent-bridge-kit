@@ -2,8 +2,11 @@
 
 **简体中文** | [English](README_EN.md)
 
-本文件夹是一套**「主 Agent（总架构师）+ 本地回环桥接器 + 专职子 Agent（施工队）」**的通用方法论与可移植样板库。
-无需安装任何第三方反代软件、无需额外配置 API Key，主 Agent 可直接通过本机回环接口（`127.0.0.1` ConnectRPC）自动发现并差遣本地正在运行的各类智能体客户端（及其配置的各类旗舰推理模型或轻量高吞吐执行模型）完成多文件编码、构建检查与自动化测试，将主 Agent 的 Token 消耗降低 **85%～90%**。
+本开源项目解决的核心工程问题是：**「如何给市面上各种架构完全不同的本地 Coding Agent 搭桥」**，让一个「主 Agent（总架构师）」通过统一的 UTF-8 工单与纯 ASCII 短命令，自动发现并差遣本地的各类子 Agent（桌面 IDE / 扩展内核 / 无头 CLI）完成多文件编码、构建检查与测试闭环，避免主会话上下文被长链路试错撑爆。
+
+全套方法论拆分为**主、辅两部分**：
+1. **第一部分（核心主篇 · 怎么建桥）**：[`AGENT_BRIDGE_METHODOLOGY.md`](AGENT_BRIDGE_METHODOLOGY.md) —— **五类建桥技术原型 + 通用五步建桥法 + 三层终态验收 + 坑点 01–50**（无论子 Agent 用已有登录态还是自有 Key，桥接协议层都遵循本篇）。
+2. **第二部分（辅助篇 · 怎么在喜欢的 Agent 上用非官方模型）**：[`AGENT_USAGE_AND_BYPASS_METHODOLOGY.md`](AGENT_USAGE_AND_BYPASS_METHODOLOGY.md) —— 当你选定了某款喜欢的 Agent 但不想被官方订阅锁死时，如何把外来 API Key（如智谱 GLM、DeepSeek、自定义网关等）无痕拼接进去，以及各工具的运行时/代理门槛对比。
 
 ---
 
@@ -41,11 +44,12 @@
 | `openclaw/` | **OpenClaw 桥接器**（2026-11-16）：`agent --local --json` + 禁插件防 Windows `EPERM` + `skipBootstrap`，6 项单测 + E2E |
 | `goose/` | **Goose CLI 桥接器**（2026-11-16）：Rust `goose.exe` + 禁 Keyring + 分片拼接直连 GLM，6 项单测 + E2E |
 | `aider/` | **Aider 桥接器**（2026-11-16）：隔离 Python venv `aider.exe` + `--target`/`--read` 定向 Diff，6 项单测 + E2E |
-| `docs/ENGINEERING_MANUAL_v0.2.zh-CN.md` | **工程手册 v0.2（最新完整版）**：整合 20 种 Agent 桥接器、坑点 01–50 统一索引、全套 125 项离线测试与凭据脱敏规范 |
+| `trae-agent/` | **Trae Agent 开源桥接器**（2026-11-16）：面向 MIT 版 `bytedance/trae-agent` (`Python 3.12 + uv`)，含 `trae-launcher.py` Windows GBK 缓冲补丁 + `traj.json` 终态校验，6 项单测 + E2E |
+| `docs/ENGINEERING_MANUAL_v0.2.zh-CN.md` | **工程手册 v0.2（最新完整版）**：整合 21 种 Agent 桥接器、坑点 01–51 统一索引、全套 131 项离线测试与凭据脱敏规范 |
 
 > **注意**：Codex 与 Antigravity 的桥接机制不同。Codex 不暴露可复用的回环 RPC 端点，请直接读 `CODEX_BRIDGE_EXPERIENCE.md` 与 `codex/README.md`，不要照搬「扫端口 + CSRF Token」流程。
 
-> **适配样本索引（共 20 款）**：Antigravity／Codex（订阅+BYOK）／WorkBuddy／DSH／ZCode／OpenCode／Gemini CLI／VS Code Cline／Claude Code／GitHub Copilot CLI／Kimi Code／Pi／Oh My Pi／Kilo／Crush／Continue CLI／iFlow／OpenClaw／Goose／Aider（注：已按要求卸载并移除旧 `qwen-code/` 环境，方法论中保留千问研究及桌面端方案二未体验声明）。**不同工具协议互不相通，换目标 Agent 必须按五步法还原契约**；真正共用的只有「环境变量注入密钥 + 工单文件派单铁律 + 发送后黄金校验 + 闭环终态校验 + 持续演进铁律」。
+> **适配样本索引（共 21 款）**：Antigravity／Codex（订阅+BYOK）／WorkBuddy／DSH／ZCode／OpenCode／Gemini CLI／VS Code Cline／Claude Code／GitHub Copilot CLI／Kimi Code／Pi／Oh My Pi／Kilo／Crush／Continue CLI／iFlow／OpenClaw／Goose／Aider／Trae Agent（开源版）。**不同工具协议互不相通，换目标 Agent 必须按五步法还原契约**；真正共用的只有「环境变量注入密钥 + 工单文件派单铁律 + 发送后黄金校验 + 闭环终态校验 + 持续演进铁律」。
 
 ---
 
@@ -322,13 +326,13 @@ node scripts/verify-no-secrets.mjs
 
 ---
 
-## 主流 Agent 免登录（BYO-Key + 智谱 GLM）桥接矩阵（2026-11-16，全 13 路真机实测通过）
+## 13 路可插拔外接 API（BYO-Key）无头桥接实测矩阵（2026-11-16，全量端到端验真）
 
-面向原本需要官方订阅或交互式登录的主流编码 CLI，现已全部实测跑通**免会员跳过登录、环境变量注入 API Key（磁盘零明文密钥）、直连智谱 GLM（Coding Plan / 标准 API）**的独立桥接器。完整免登录机制、20 款 Agent 对比与本地/代理环境门槛评估见：[AGENT_USAGE_AND_BYPASS_METHODOLOGY.md](AGENT_USAGE_AND_BYPASS_METHODOLOGY.md)。
+针对原生无头 CLI 或可扩展配置目录的 Agent，套件提供了完整的隔离派单适配器，支持通过环境变量注入任意兼容端点（OpenAI Chat / OpenAI Responses / Anthropic Messages）。下表为各桥接器的建桥机制与端到端联通性实测记录（注：本次验证恰好使用手头可用的智谱 GLM 兼容额度作为三协议标准测试端点；所有脚本均可通过 `--base-url` / `--model` / `--api-key-env` 无缝替换为 DeepSeek、OpenRouter、Ollama 或任意官方/自建端点）。完整外接 API 方法与环境门槛见：[AGENT_USAGE_AND_BYPASS_METHODOLOGY.md](AGENT_USAGE_AND_BYPASS_METHODOLOGY.md)。
 
 > 已按要求卸载并移除旧 `@qwen-code/qwen-code` 与 `qwen-code/` 环境；关于 `qwen-oauth` 停用与千问桌面端方案二（未实际体验过）的分析保留在 `AGENT_BRIDGE_METHODOLOGY.md` 与 `AGENT_USAGE_AND_BYPASS_METHODOLOGY.md` 中。
 
-| Agent | 入口目录 / 脚本 | 跳过登录核心手段 | 单测 & 审计 | 智谱 GLM 实测（`glm-4.7` R1 / R2 `--reuse`） |
+| Agent | 入口目录 / 脚本 | 建桥隔离与免登录核心手段 | 单测 & 审计 | 端到端实测（标准测试模型 R1 写文件 / R2 `--reuse`） |
 | :--- | :--- | :--- | :--- | :--- |
 | **Claude Code** | [`claude-code/`](claude-code/README.md) | `--bare` + `ANTHROPIC_BASE_URL` + `ANTHROPIC_API_KEY` | 6/6, `clean` | R1 `23.8s` (`tools=3`) / R2 `9.3s` |
 | **Codex (BYOK)** | [`codex/`](codex/README.md) (`dispatch-codex-template.mjs --byok`) | 隔离 `CODEX_HOME` (`env_key` + `models.json` + `/api/v1` `responses`) | 6/6, `clean` | R1 `19.8s` / R2 `19.7s` |
@@ -343,11 +347,12 @@ node scripts/verify-no-secrets.mjs
 | **OpenClaw** | [`openclaw/`](openclaw/README.md) | `agent --local --json` + `plugins.enabled: false` + `skipBootstrap: true` | 6/6, `clean` | R1 `55.9s` / R2 `39.3s` |
 | **Goose** | [`goose/`](goose/README.md) | 隔离 `GOOSE_PATH_ROOT` + `GOOSE_DISABLE_KEYRING=true` + `OPENAI_HOST` | 6/6, `clean` | R1 `20.7s` / R2 `6.0s` |
 | **Aider** | [`aider/`](aider/README.md) | 隔离 Python venv `aider.exe` + `OPENAI_API_BASE` + `--target`/`--read` | 6/6, `clean` | R1 `Applied edit` / R2 `--chat-mode ask` 召回 |
+| **Trae Agent (开源)** | [`trae-agent/`](trae-agent/README.md) | `uv` + Python 3.12 + `trae-launcher.py` (`cmd.exe` UTF-8 补丁) + `traj.json` | 6/6, `clean` | R1 `33.9s` (`tools=7`) / R2 `13.4s` |
 
 通用派单示例（统一从环境变量注入 Key，切勿硬编码进仓库文件）：
 
 ```powershell
-$env:ZAI_API_KEY = "<YOUR_GLM_API_KEY>"
+$env:ZAI_API_KEY = "<YOUR_COMPAT_API_KEY>"
 node claude-code/scripts/dispatch-claude.mjs --cwd D:\YourProject --file TASK_001.md --write
 node dispatch-codex-template.mjs --byok --cwd D:\YourProject --file TASK_001.md --write
 node pi/scripts/dispatch-pi.mjs --cwd D:\YourProject --file TASK_001.md --write

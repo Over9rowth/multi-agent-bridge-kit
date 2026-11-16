@@ -1,10 +1,12 @@
-# Local Multi-Agent Orchestration & BYO-Key Bridge Kit
+# Local Multi-Agent Orchestration & Bridge Kit
 
 [简体中文](README.md) | **English**
 
-A portable, zero-third-party-dependency engineering methodology and adapter kit for **"Architect Main Agent + Local Bridge + Worker Sub-Agents"**.
+This open-source kit focuses on a single core engineering question: **how to build reliable local bridges across Coding Agents with completely different internal architectures**—so an Architect main Agent can discover, isolate, dispatch UTF-8 work orders to, and verify local worker Agents (desktop IDEs, embedded extension cores, or headless CLIs) without bloating the main context window.
 
-Without hardcoding secrets into repositories or paying for separate IDE/CLI subscriptions across every tool, a main Agent can dispatch multi-file coding, build, and test loops to **20 mainstream desktop & CLI coding Agents**—either reusing existing local desktop sessions (Antigravity, WorkBuddy, DSH, OpenCode, VS Code Cline) or bypassing subscription logins cleanly via **BYO-Key environment-variable indirection** (Claude Code, Codex, GitHub Copilot CLI, Kimi Code, Pi, Oh My Pi, Kilo, Crush, Continue CLI, iFlow, OpenClaw, Goose, Aider, plus Gemini CLI & ZCode).
+The methodology is organized into **two distinct tracks**:
+1. **Part I (Primary Focus — How to Build Bridges Across Agents)**: [`AGENT_BRIDGE_METHODOLOGY.en.md`](AGENT_BRIDGE_METHODOLOGY.en.md) — **5 Bridging Archetypes + Universal 5-Step Discovery Chain + 3-Layer Verification + Pitfalls 01–50** (applies whether the worker uses an existing desktop/subscription login or an external API key).
+2. **Part II (Supporting Guide — Using Non-Official Models / External API Keys on Your Preferred Agent)**: [`AGENT_USAGE_AND_BYPASS_METHODOLOGY.en.md`](AGENT_USAGE_AND_BYPASS_METHODOLOGY.en.md) — a practical companion guide showing how to attach external API keys and custom endpoints to whichever Agent you prefer, plus each Agent's local runtime and network/proxy requirements.
 
 ---
 
@@ -35,17 +37,20 @@ Without hardcoding secrets into repositories or paying for separate IDE/CLI subs
 | `openclaw/` | **OpenClaw Adapter (BYOK)**: `agent --local --json` + `plugins.enabled: false` (Windows symlink fix) + `skipBootstrap: true`, 6 unit tests |
 | `goose/` | **Goose CLI Adapter (BYOK)**: Rust `goose.exe` + `GOOSE_DISABLE_KEYRING=true` + chunked stream assembly, 6 unit tests |
 | `aider/` | **Aider Adapter (BYOK)**: Isolated Python venv `aider.exe` + `--target`/`--read` + read-only `--chat-mode ask`, 6 unit tests |
-| `docs/ENGINEERING_MANUAL_v0.2.zh-CN.md` | **Full Engineering Manual (v0.2, Chinese)**: Consolidated manual covering all 20 adapters, 125 unit tests, and Pitfalls 01–50 |
+| `trae-agent/` | **Trae Agent (Open-Source) Adapter**: `bytedance/trae-agent` (`Python 3.12 + uv`) + `trae-launcher.py` Windows `cmd.exe` UTF-8 buffer patch + `traj.json` check, 6 unit tests |
+| `docs/ENGINEERING_MANUAL_v0.2.zh-CN.md` | **Full Engineering Manual (v0.2, Chinese)**: Consolidated manual covering all 21 adapters, 131 unit tests, and Pitfalls 01–51 |
 
 > **Golden Rule**: Protocols across Agents are **not interchangeable**. Never rename a script for a different Agent—always apply the 5-step discovery workflow. What is universal across all 20 adapters: **UTF-8 task-file dispatch (`--file`) + environment-variable credential injection (zero plaintext keys on disk) + 3-layer verification (accepted → protocol terminal event → independent artifact check)**.
 
 ---
 
-## 🚀 BYO-Key Skip-Login Verified Matrix (13 Adapters)
+## 🚀 Cross-Agent Headless Bridge Matrix (BYO-Key Verified Adapters)
 
-All 13 BYO-Key adapters below were verified end-to-end on Windows 11 against an OpenAI/Anthropic/Responses-compatible endpoint (Zhipu GLM Coding Plan `glm-4.7`) with **0 plaintext secrets on disk**, passing: `--status`, `--dry-run`, **Round 1** (read `fixture.json` & write `result.txt`), **Round 2** (`--reuse` cross-process memory recall), **cross-directory `--reuse` rejection**, `6/6` offline unit tests, and `verify-no-secrets.mjs` (`clean`).
+All adapters below implement isolated workspace/config dispatch, environment-variable credential indirection (zero plaintext secrets on disk), and 3-layer closed-loop verification. *(Verification note: end-to-end smoke tests were run against a spare third-party GLM endpoint simply because it natively exposes OpenAI Chat, OpenAI Responses, and Anthropic Messages APIs; every adapter is completely vendor-agnostic and works with OpenAI, Anthropic, DeepSeek, OpenRouter, Ollama, or any compatible endpoint via `--base-url`, `--model`, and `--api-key-env`.)*
 
-| Agent | Directory / Script | Skip-Login Mechanism | Unit Tests & Audit | Verified E2E (R1 / R2 `--reuse`) |
+Each adapter passed `--status`, `--dry-run`, **Round 1** (read `fixture.json` & write `result.txt`), **Round 2** (`--reuse` cross-process memory recall), **cross-directory `--reuse` rejection**, `6/6` offline unit tests, and `verify-no-secrets.mjs` (`clean`).
+
+| Agent | Directory / Script | Isolation & Auth Mechanism | Unit Tests & Audit | Verified E2E (R1 / R2 `--reuse`) |
 | :--- | :--- | :--- | :--- | :--- |
 | **Claude Code** | `claude-code/scripts/dispatch-claude.mjs` | `--bare` + `ANTHROPIC_BASE_URL` + `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` | 6/6, `clean` | R1 `23.8s` (`tools=3`) / R2 `9.3s` |
 | **Codex (BYOK)** | `dispatch-codex-template.mjs --byok` | Isolated `CODEX_HOME` (`env_key` + `models.json` + `wire_api="responses"`) | 6/6, `clean` | R1 `19.8s` / R2 `19.7s` |
@@ -60,6 +65,7 @@ All 13 BYO-Key adapters below were verified end-to-end on Windows 11 against an 
 | **OpenClaw** | `openclaw/scripts/dispatch-openclaw.mjs` | `agent --local --json` + `plugins.enabled: false` + `skipBootstrap: true` | 6/6, `clean` | R1 `55.9s` / R2 `39.3s` |
 | **Goose** | `goose/scripts/dispatch-goose.mjs` | Native `goose.exe` + `GOOSE_DISABLE_KEYRING=true` + `OPENAI_HOST` | 6/6, `clean` | R1 `20.7s` (`tools=3`) / R2 `6.0s` |
 | **Aider** | `aider/scripts/dispatch-aider.mjs` | Isolated Python venv `aider.exe` + `--target`/`--read` + `--chat-mode ask` | 6/6, `clean` | R1 `Applied edit` / R2 recall |
+| **Trae Agent** | `trae-agent/scripts/dispatch-trae.mjs` | `Python 3.12 + uv` + `trae-launcher.py` UTF-8 patch + `traj.json` check | 6/6, `clean` | R1 `33.9s` (`tools=7`) / R2 `13.4s` |
 
 ### Quick Usage Example (Never hardcode API keys into files)
 
