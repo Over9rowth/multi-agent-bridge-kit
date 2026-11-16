@@ -78,8 +78,12 @@
      2. 即使开启 `Override OpenAI Base URL`，`127.0.0.1` 或内网代理仍会被 Cursor 云端拒连，且 `free` 会员账号下对自定义模型与 Agent 实施服务端套餐门控（`BAD_MODEL_NAME: "The model ... does not work with your current plan or api key"`，智谱官方 Cursor 文档亦明确声明“**只有订阅了 Cursor 高级会员及以上的用户才支持自定义配置模型**”）；
      3. 即使其内部包含 `PrivateInference`（`CURSOR_PRIVATE_INFERENCE_CONFIG`）本地循环模块，也会调用 `readTeamEnablement()` 校验企业/团队授权（非团队账号报 `private-inference-not-enrolled`），且普通 `local-loop` 在 `getApiKey()` 前强制校验已授权订阅登录态（`No sign-in authorizes local...`）。
    - **合规替代方案（在 Cursor 中免会员用 GLM）**：① 在 Cursor 内安装兼容 VS Code 的开源 BYOK 扩展（如 **Cline**、**Kilo Code**、**Continue**）直连智谱；② 直接在 Cursor 终端运行本套件的 13 路免登录桥接器（`claude-code`、`codex --byok`、`pi`、`omp`、`kilo`、`crush` 等）。
-2. **Qoder CLI（`@qoder-ai/qodercli` v1.1.89 实测）与 Factory Droid**：
+2. **Qoder CLI（`@qoder-ai/qodercli` v1.1.89 实测）、TraeCode CLI (`traecli`) 与 Factory Droid**：
    - **先登录才能用 BYOK**：实测以隔离 `--config-dir` + `--settings`（传入 `providers` 自定义智谱端点）运行 `qodercli -p`，在发出任何模型请求前即以 `NonInteractiveAuthRequiredError: Not logged in · Please run /login`（exit 1）退出。核对 `qodercli.js` 源码证实 `authType` 仅接受 `qoder-browser` / `qoder-pat`，启动器 `BUd()` 强制先验 Qoder 登录态，然后才开放 `customModels`（BYOK）。Factory Droid 同理需先登录账号（且需海外手机验证）。
+   - **Trae 三条产品线区分（⚠️ 本机未安装实测，基于官方文档与 `pyproject.toml` 源码核对）**：
+     - **Trae IDE**（`trae.cn` / `trae.ai`）：支持在「自定义配置」面板填写 OpenAI 兼容端点（`https://open.bigmodel.cn/api/coding/paas/v4`）与智谱 Key，**无需购买会员即可调用自定义模型**，但启用 AI 面板仍需先登录免费 Trae 账号（不能零账号启动）；
+     - **商业版 `TraeCode CLI` (`traecli`)**：官方仅对 **TRAE CN 企业旗舰版**开放，强依赖 `traecli login` / `TRAECLI_PERSONAL_ACCESS_TOKEN`，个人版与无账号均不可用；
+     - **开源版 `bytedance/trae-agent` (`trae-cli`)**：MIT 开源、**100% 支持免登录 BYO-Key**（`trae_config.yaml` 或 `OPENAI_API_KEY` + `OPENAI_BASE_URL` / `--model-base-url` 跑 `trae-cli run`），但要求 **Python ≥ 3.12** 与 `uv` 环境（尚未在本机搭建实测）。
 3. **桌面私有 IPC / 本地动态令牌类（Antigravity、WorkBuddy、DSH）**：
    - 这些工具本身是依托已登录的桌面宿主运行的（如 Antigravity 的 ConnectRPC + `--csrf_token`、WorkBuddy 的临时 CDP + `__wbInvoke`、DSH 的启动令牌换签名 Cookie）。桥接器的设计原则是**合法复用已开启的本机桌面会话服务**，不提取桌面加密 Cookie，也不篡改安装包。
 4. **硬件签名与已停用 OAuth（以千问生态为例）**：
