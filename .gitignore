@@ -1,0 +1,12 @@
+# Open-source safety ignore rules
+private/
+**/private/
+*.state.json
+.*-bridge-state.json
+last-result.json
+exec-info.json
+*.lock
+*.tmp
+*.zip
+node_modules/
+.env

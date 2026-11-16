@@ -1,0 +1,7 @@
+private/
+*.state.json
+.iflow-bridge-state.json
+last-result.json
+*.lock
+*.tmp
+exec-info.json

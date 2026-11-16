@@ -1,0 +1,7 @@
+private/
+*.state.json
+.continue-bridge-state.json
+last-result.json
+*.lock
+*.tmp
+active-task.md

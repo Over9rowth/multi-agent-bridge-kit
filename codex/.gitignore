@@ -1,0 +1,6 @@
+private/
+*.state.json
+.codex-bridge-state.json
+last-result.json
+*.lock
+*.tmp

@@ -1,0 +1,6 @@
+private/
+*.state.json
+.goose-bridge-state.json
+last-result.json
+*.lock
+*.tmp

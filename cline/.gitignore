@@ -1,0 +1,6 @@
+private/
+*.state.json
+.cline-bridge-state.json
+last-result.json
+*.lock
+*.tmp
