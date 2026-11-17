@@ -16,6 +16,34 @@ The methodology is organized into **two distinct tracks**:
 
 ---
 
+## ⚡ Zero-Effort Quick Start (Drop This Link to Your Strongest Agent)
+
+Don't want to read through protocols, scripts, or dozens of pages of docs? **You only need two steps:**
+
+1. **Open the strongest Coding Agent you have** (e.g., Claude Code, Antigravity, Codex, Cursor, or any Agent that can read repos and run local shell commands).
+2. **Paste this repository URL to it and list which Agents and models you have available** (installed IDEs/CLIs, subscriptions, or third-party APIs).
+
+Your strongest Agent will handle everything else automatically:
+- **Auto-Select & Build the Bridge**: Reads the methodology and 21 ready-made adapters in this repo, picks (or adapts via the 5-step method) the best local bridge for your machine, and verifies connectivity.
+- **Auto-Delegate Real Work**: Acts as your **Architect**—planning, decomposing, and verifying—while dispatching token-heavy coding, refactoring, build, and test loops to the right local worker Agents and models.
+- **Built-In Safety & Pitfall Guards**: Automatically follows UTF-8 task-file dispatch, 3-layer verification, and strict environment-variable-only secret injection (zero plaintext API keys on disk).
+
+> **Copy, fill in your setup, and send this directly to your strongest Agent:**
+
+```markdown
+Please read (or clone and inspect) this repository first: https://github.com/Over9rowth/multi-agent-bridge-kit
+
+Here are the local Agents and model resources I currently have available:
+- Installed / available local Agents: (e.g., Antigravity, Codex, Claude Code, Gemini CLI, VS Code Cline, OpenCode, etc.)
+- Available models / subscriptions / APIs: (e.g., official subscriptions, GLM / DeepSeek / OpenRouter / custom OpenAI- or Anthropic-compatible APIs; I will supply API keys strictly via environment variables—never write plaintext keys to disk)
+
+Please act as my Architect:
+1. Using the methodology and adapter templates in this repo, select and set up the local bridge(s) best suited to my machine and model resources, and verify them with `--status` and a minimal end-to-end check.
+2. When I give you real engineering tasks, handle planning, decomposition, and final verification yourself, and automatically delegate coding, build, and test subtasks to the most appropriate local worker Agent and model.
+```
+
+---
+
 ## 📂 Repository Map
 
 | File / Directory | Description |
