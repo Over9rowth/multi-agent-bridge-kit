@@ -1,3 +1,9 @@
+<p align="center">
+  <a href="https://github.com/Over9rowth">
+    <img src="./docs/suiren-badge.svg" alt="OVER9ROWTH · 燧人计划" width="420" />
+  </a>
+</p>
+
 # Local Multi-Agent Orchestration & Bridge Kit
 
 [简体中文](README.md) | **English**
