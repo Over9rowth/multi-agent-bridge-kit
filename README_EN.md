@@ -18,28 +18,32 @@ The methodology is organized into **two distinct tracks**:
 
 ## ⚡ Zero-Effort Quick Start (Drop This Link to Your Strongest Agent)
 
-Don't want to read through protocols, scripts, or dozens of pages of docs? **You only need two steps:**
+Don't want to study internal protocols, tweak configs by hand, or read dozens of pages of docs? **You only need two steps:**
 
 1. **Open the strongest Coding Agent you have** (e.g., Claude Code, Antigravity, Codex, Cursor, or any Agent that can read repos and run local shell commands).
-2. **Paste this repository URL to it and list which Agents and models you have available** (installed IDEs/CLIs, subscriptions, or third-party APIs).
+2. **Paste this repository URL to it and tell it your exact setup**:
+   - Which **local Agent tools** you have installed (or prefer to use);
+   - Which Agent(s) have **account subscriptions or credits** and which models they can run;
+   - Which **external / third-party model API keys** you have (this kit explicitly supports **cross-vendor BYO-Key**—you can wire non-official models such as GLM, DeepSeek, OpenRouter, or custom gateways directly into your preferred Agent even without that vendor's official subscription).
 
 Your strongest Agent will handle everything else automatically:
-- **Auto-Select & Build the Bridge**: Reads the methodology and 21 ready-made adapters in this repo, picks (or adapts via the 5-step method) the best local bridge for your machine, and verifies connectivity.
-- **Auto-Delegate Real Work**: Acts as your **Architect**—planning, decomposing, and verifying—while dispatching token-heavy coding, refactoring, build, and test loops to the right local worker Agents and models.
+- **Auto-Pair & Build the Bridges**: Uses both the cross-Agent bridging methodology and the BYO-Key guide in this repo to pick the best **Agent + Model** pairings for your machine—bridging existing subscription/credit accounts directly, or wiring your external API keys cleanly into compatible Agents—and runs verification checks.
+- **Auto-Delegate Real Work**: Acts as your **Architect** (planning, decomposition, final verification) and automatically assigns coding, refactoring, build, and test subtasks to the most suitable **worker Agent + model** combination based on task difficulty and quota/cost.
 - **Built-In Safety & Pitfall Guards**: Automatically follows UTF-8 task-file dispatch, 3-layer verification, and strict environment-variable-only secret injection (zero plaintext API keys on disk).
 
-> **Copy, fill in your setup, and send this directly to your strongest Agent:**
+> **Copy, adjust to match your setup, and send this directly to your strongest Agent:**
 
 ```markdown
 Please read (or clone and inspect) this repository first: https://github.com/Over9rowth/multi-agent-bridge-kit
 
-Here are the local Agents and model resources I currently have available:
-- Installed / available local Agents: (e.g., Antigravity, Codex, Claude Code, Gemini CLI, VS Code Cline, OpenCode, etc.)
-- Available models / subscriptions / APIs: (e.g., official subscriptions, GLM / DeepSeek / OpenRouter / custom OpenAI- or Anthropic-compatible APIs; I will supply API keys strictly via environment variables—never write plaintext keys to disk)
+Here is my current setup of local Agents, account quotas, and external model APIs (this kit supports both built-in account models and wiring non-official / third-party model APIs into Agents):
+1. Local Agents installed / available: (e.g., Antigravity, Codex, Claude Code, Gemini CLI, VS Code Cline, OpenCode, etc.)
+2. Account subscriptions / credits & usable models per Agent: (e.g., Antigravity credits for Gemini / Claude; Codex with ChatGPT subscription for GPT-5.x; Gemini CLI free tier; or "no official subscription" for Agents without one)
+3. External / third-party model API keys available: (e.g., GLM, DeepSeek, OpenRouter, or custom OpenAI-/Anthropic-compatible endpoints that can be wired into any BYO-Key-capable Agent; I will supply API keys strictly via terminal environment variables—never write plaintext keys to disk)
 
 Please act as my Architect:
-1. Using the methodology and adapter templates in this repo, select and set up the local bridge(s) best suited to my machine and model resources, and verify them with `--status` and a minimal end-to-end check.
-2. When I give you real engineering tasks, handle planning, decomposition, and final verification yourself, and automatically delegate coding, build, and test subtasks to the most appropriate local worker Agent and model.
+1. Using the bridging methodology, BYO-Key guide, and adapter templates in this repo, design and set up the best local bridge combination(s) for my Agents, account quotas, and external APIs, and verify them with `--status` and a minimal end-to-end check.
+2. When I give you real engineering tasks, handle planning, decomposition, and final verification yourself, and automatically delegate coding, refactoring, build, and test subtasks to the best-fit "worker Agent + model" pairing considering both task complexity and quota/cost.
 ```
 
 ---
